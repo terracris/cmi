@@ -2,8 +2,8 @@ import numpy as np
 from math import cos, sin, pi
 
 # angles must be in radians
-theta_1 = pi/4
-theta_2 = pi/4
+theta_1 = pi/3
+theta_2 = pi/3
 theta_3 = pi/4
 
 # link lengths are in mm (I wonder if this is okay)
@@ -15,7 +15,7 @@ L4 = 15
 L5 = 194.10
 
 num_joints = 3
-y_offset = -6.5  # y offset of the end effector relative to the base. 
+y_offset = -3.5  # y offset of the end effector relative to the base. 
 
 # cos and sin are in radians
 

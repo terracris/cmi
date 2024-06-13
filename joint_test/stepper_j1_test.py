@@ -209,7 +209,7 @@ class Stepper:
     
     def home(self):
         
-        is_home = GPIO.input(self.homing_pin)  # reads from homing pin to determine if we are home yet
+        is_home = self.is_my_switch_pressed()  # reads from homing pin to determine if we are home yet
 
         self.direction = self.homing_direction # all motors home in the CCW direction
         
@@ -217,7 +217,7 @@ class Stepper:
             # if we are not home, we must rotate in our negative direction
             # until the limit switch has been hit
             
-            is_home = GPIO.input(self.homing_pin)
+            is_home = self.is_my_switch_pressed() 
             if is_home:
                 break
 
@@ -252,6 +252,32 @@ class Stepper:
 
         # after all homing is complete, we need to reset our position
         self.reset_position()
+        
+    def is_my_switch_pressed(self):
+        
+        def is_switch_pressed():
+            return GPIO.input(self.homing_pin) == GPIO.HIGH
+
+        POLL_INTERVAL = 0.01 # Polling interval in seconds (10ms)
+        DEBOUNCE_COUNT = 2 # Number of consecutive polls needed to confirm switch press
+        MAX_INTERVAL = 3
+        try:
+            num_intervals = 0
+            consecutive_presses = 0
+            while num_intervals < MAX_INTERVAL:
+            # Read the state of the GPIO pin
+                if is_switch_pressed():
+                    consecutive_presses += 1
+                    if consecutive_presses >= DEBOUNCE_COUNT:
+                        return True
+                        print("Limit switch pressed")
+                else:
+                    consecutive_presses = 0
+
+                time.sleep(POLL_INTERVAL) # wait before next poll
+                num_intervals += 1
+        except Exception as e:
+            print(e)
 
     def reset_position(self):
         self.current_pos = 0

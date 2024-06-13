@@ -2,8 +2,7 @@ import time
 import ctypes
 import numpy as np
 from math import sqrt
-import Jetson.GPIO as GPIO
-from collections import deque
+import RPi.GPIO as GPIO
 
 """
 Default motor rotation direction is CCW. However, you can set the motor to be inverted
@@ -210,7 +209,7 @@ class Stepper:
     
     def home(self):
         
-        is_home = GPIO.input(self.homing_pin)  # reads from homing pin to determine if we are home yet
+        is_home = self.is_my_switch_pressed()  # reads from homing pin to determine if we are home yet
 
         self.direction = self.homing_direction # all motors home in the CCW direction
         
@@ -218,7 +217,7 @@ class Stepper:
             # if we are not home, we must rotate in our negative direction
             # until the limit switch has been hit
             
-            is_home = GPIO.input(self.homing_pin)
+            is_home = self.is_my_switch_pressed() 
             if is_home:
                 break
 
@@ -253,6 +252,32 @@ class Stepper:
 
         # after all homing is complete, we need to reset our position
         self.reset_position()
+        
+    def is_my_switch_pressed(self):
+        
+        def is_switch_pressed():
+            return GPIO.input(self.homing_pin) == GPIO.HIGH
+
+        POLL_INTERVAL = 0.01 # Polling interval in seconds (10ms)
+        DEBOUNCE_COUNT = 2 # Number of consecutive polls needed to confirm switch press
+        MAX_INTERVAL = 3
+        try:
+            num_intervals = 0
+            consecutive_presses = 0
+            while num_intervals < MAX_INTERVAL:
+            # Read the state of the GPIO pin
+                if is_switch_pressed():
+                    consecutive_presses += 1
+                    if consecutive_presses >= DEBOUNCE_COUNT:
+                        return True
+                        print("Limit switch pressed")
+                else:
+                    consecutive_presses = 0
+
+                time.sleep(POLL_INTERVAL) # wait before next poll
+                num_intervals += 1
+        except Exception as e:
+            print(e)
 
     def reset_position(self):
         self.current_pos = 0
@@ -270,7 +295,7 @@ class Stepper:
         self.move_absolute_pid(steps)
     
     def move_clockwise_simple(self):
-        self.direction = Stepper.CW
+        self.direction = Stepper.CCW
         while True:
             self.step()
             time.sleep(0.05)
@@ -296,33 +321,29 @@ class Stepper:
 if __name__ == '__main__':
     pulses_per_rev = 200
     enable_pin = 37
+
     # joint 2
-    pulse_pin_j2 = 19
-    dir_pin_j2 = 21
-    homing_pin_j2 = 23
+    pulse_pin_j2 = 29
+    dir_pin_j2 = 31
+    homing_pin_j2 = 33
     gear_ratio_j2 = 5 * 5.18
-    home_count_j2 = -145
+    home_count_j2 = -90
     max_speed_j2 = 75
     # gonna need to update kinematics to account for the joint limits:
     # like if it says j2 goes to 30 degrees, need to find clockwise alternative for all joints
-    max_ccw_j2 = 115
-    max_cw_j2 = -10
+    max_positive_angle_j2 = 115
+    max_negative_angle_j2 = -10
     homing_direction_j2 = Stepper.CCW
+
     try:
-        j2 = Stepper(pulse_pin_j2, dir_pin_j2, enable_pin, homing_pin_j2, pulses_per_rev, gear_ratio_j2, max_speed_j2, max_ccw_j2, max_cw_j2, home_count_j2,homing_direction_j2 ,inverted=True, debug=True)
+        j2 = Stepper(pulse_pin_j2, dir_pin_j2, enable_pin, homing_pin_j2, pulses_per_rev, gear_ratio_j2, max_speed_j2,max_positive_angle_j2, max_negative_angle_j2,home_count_j2,homing_direction_j2 ,inverted=True, debug=True)
+
         count = 0
 
-        print("about to home")
-
-        j2.home()
-        j2.write(90)
-        
-        # j2.move_clockwise_simple()
-        while True:
-            pass
-        #while count < 3:
-            #j2.home()
-            #count += 1
+        while count < 3:
+            j2.home()
+            time.sleep(2)
+            count += 1
 
         GPIO.cleanup()
     except KeyboardInterrupt:

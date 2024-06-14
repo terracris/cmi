@@ -7,7 +7,6 @@ from math import ceil
 """
 Default motor rotation direction is CCW. However, you can set the motor to be inverted
 """
-
 class Stepper:
     CCW = 1
     CW = 0
@@ -200,23 +199,18 @@ class Stepper:
     def set_output_pins(self):
         
         GPIO.setmode(GPIO.BOARD)
-        
         GPIO.setup(self.pulse_pin, GPIO.OUT)   # output pin 
         GPIO.setup(self.dir_pin, GPIO.OUT)     # output pin
+        GPIO.setup(self.enable_pin, GPIO.OUT)  # output pin
+        GPIO.setup(self.homing_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # input pin 
         
-        if self.homing_pin != None:
-            GPIO.setup(self.homing_pin, GPIO.IN) # input pin 
-        
-        if self.enable_pin != None: 
-            GPIO.setup(self.enable_pin, GPIO.OUT)  # output pin
-            GPIO.output(self.enable_pin, GPIO.LOW) # turn motors on
-        
+        GPIO.output(self.enable_pin, GPIO.LOW) # turn motors on
         if self.homing_direction == Stepper.CCW:
             GPIO.output(self.dir_pin, GPIO.HIGH)    # HIGH is ccw --> default direction
         else:
             GPIO.output(self.dir_pin, GPIO.LOW)    # HIGH is ccw --> default direction
         GPIO.output(self.pulse_pin, GPIO.LOW)  # no pulse
-        time.sleep(self.min_enable_setup) # minimum enable time is 200 ms 
+        time.sleep(self.min_enable_setup) # minimum enable time is 200 ms
 
     def home(self):
 
@@ -255,7 +249,7 @@ class Stepper:
             self.step()
             time.sleep(0.01)
             if self.debug:
-                print("current direction is: ", self.direction)
+                print("current direction is: ", self.direction, "pos: ", cur_pos)
             cur_pos += 1
 
 

@@ -264,7 +264,7 @@ class Stepper:
             return GPIO.input(self.homing_pin) == GPIO.HIGH
 
         POLL_INTERVAL = 0.01 # Polling interval in seconds (10ms)
-        DEBOUNCE_COUNT = 2 # Number of consecutive polls needed to confirm switch press
+        DEBOUNCE_COUNT = 3 # Number of consecutive polls needed to confirm switch press
         MAX_INTERVAL = 3
         try:
             num_intervals = 0

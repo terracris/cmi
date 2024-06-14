@@ -31,11 +31,8 @@ class Arm:
         self.link_lengths = [self.L1, self.L2, self.L3, self.L4, self.L5]
         self.bounds = [(-pi/2, pi/3), (-pi/18, 2*pi/3), (-4*pi/9, 4*pi/9)]
 
-        # EE orientation error tol
-        self.eomg = 0.01 
-        # EE position error tol --> Tolerance is 1mm
-        self.ev = 0.01
-
+        # we are keeping everything in radians and mm. for printing angles we use degrees since
+        # it is easier.
         # self.home()
 
     def home(self):
@@ -117,89 +114,15 @@ class Arm:
         elapsed_time = end - start
         return result.x, result, elapsed_time
 
-    def trajectory_planning(self, ik):
+    def trajectory_planning(self, theta_end):
         
         tf = 5     # time of motion [ s ]
-        N = 5      # number of points in trajectory
+        N = 4      # number of points in trajectory
         method = 5 # time-scaling method (quintic)
         theta_start = self.get_current_theta()
-        def CubicTimeScaling(Tf, t):
-    """Computes s(t) for a cubic time scaling
-
-    :param Tf: Total time of the motion in seconds from rest to rest
-    :param t: The current time t satisfying 0 < t < Tf
-    :return: The path parameter s(t) corresponding to a third-order
-             polynomial motion that begins and ends at zero velocity
-
-    Example Input:
-        Tf = 2
-        t = 0.6
-    Output:
-        0.216
-    """
-    return 3 * (1.0 * t / Tf) ** 2 - 2 * (1.0 * t / Tf) ** 3
-
-def QuinticTimeScaling(Tf, t):
-    """Computes s(t) for a quintic time scaling
-
-    :param Tf: Total time of the motion in seconds from rest to rest
-    :param t: The current time t satisfying 0 < t < Tf
-    :return: The path parameter s(t) corresponding to a fifth-order
-             polynomial motion that begins and ends at zero velocity and zero
-             acceleration
-
-    Example Input:
-        Tf = 2
-        t = 0.6
-    Output:
-        0.16308
-    """
-    return 10 * (1.0 * t / Tf) ** 3 - 15 * (1.0 * t / Tf) ** 4 \
-           + 6 * (1.0 * t / Tf) ** 5
-
-def JointTrajectory(thetastart, thetaend, Tf, N, method):
-    """Computes a straight-line trajectory in joint space
-
-    :param thetastart: The initial joint variables
-    :param thetaend: The final joint variables
-    :param Tf: Total time of the motion in seconds from rest to rest
-    :param N: The number of points N > 1 (Start and stop) in the discrete
-              representation of the trajectory
-    :param method: The time-scaling method, where 3 indicates cubic (third-
-                   order polynomial) time scaling and 5 indicates quintic
-                   (fifth-order polynomial) time scaling
-    :return: A trajectory as an N x n matrix, where each row is an n-vector
-             of joint variables at an instant in time. The first row is
-             thetastart and the Nth row is thetaend . The elapsed time
-             between each row is Tf / (N - 1)
-
-    Example Input:
-        thetastart = np.array([1, 0, 0, 1, 1, 0.2, 0,1])
-        thetaend = np.array([1.2, 0.5, 0.6, 1.1, 2, 2, 0.9, 1])
-        Tf = 4
-        N = 6
-        method = 3
-    Output:
-        np.array([[     1,     0,      0,      1,     1,    0.2,      0, 1]
-                  [1.0208, 0.052, 0.0624, 1.0104, 1.104, 0.3872, 0.0936, 1]
-                  [1.0704, 0.176, 0.2112, 1.0352, 1.352, 0.8336, 0.3168, 1]
-                  [1.1296, 0.324, 0.3888, 1.0648, 1.648, 1.3664, 0.5832, 1]
-                  [1.1792, 0.448, 0.5376, 1.0896, 1.896, 1.8128, 0.8064, 1]
-                  [   1.2,   0.5,    0.6,    1.1,     2,      2,    0.9, 1]])
-    """
-    N = int(N)
-    timegap = Tf / (N - 1.0)
-    traj = np.zeros((len(thetastart), N))
-    for i in range(N):
-        if method == 3:
-            s = CubicTimeScaling(Tf, timegap * i)
-        else:
-            s = QuinticTimeScaling(Tf, timegap * i)
-        traj[:, i] = s * np.array(thetaend) + (1 - s) * np.array(thetastart)
-    traj = np.array(traj).T
-    return traj
-        return None
-    
+        joint_traj = Arm.JointTrajectory(theta_start, theta_end, tf, N, method)
+        return joint_traj
+            
     def follow_trajectory(self, trajecory):
         start_time = Stepper.get_time()  # time resolution will be in seconds
         # trajectory is a numpy array size (N x J)
@@ -222,6 +145,7 @@ def JointTrajectory(thetastart, thetaend, Tf, N, method):
             thread = threading.Thread(target=self.write_joint, args=(joint, joint_angle))
             thread.start()
             threads.append(thread)
+            #updated_joint_angle = self.write_joint(joint, joint_angle) # one joint at a time
 
         # wait for each joint to reach its position
         for thread in threads:
@@ -229,6 +153,7 @@ def JointTrajectory(thetastart, thetaend, Tf, N, method):
             updated_angle.append(updated_joint_angle)
             threads.remove(thread) # remove thread after completion
         
+        print(updated_angle)
         self.update_angles(updated_angle)
 
     def write_joint(self, joint, joint_angle):
@@ -240,23 +165,21 @@ def JointTrajectory(thetastart, thetaend, Tf, N, method):
         updated_angle = joint.write(angle_deg)
         
         return updated_angle # writes angle to joint --> needs to be threading though
-
     def update_angles(self, joint_angles):
         
         # updates our joint angles to the ones actually achieved by the motors
         for x in range(len(joint_angles)):
             self.joint_angles[x] = joint_angles[x]
 
+    # all joint angles are in radians
     def get_current_theta(self):
 
-        # returns our current joint angles in radians
-        theta_list = []
+        return self.joint_angles
 
-        for theta in self.joint_angles:
-            print(theta)
-            theta_list.append(radians(theta))
-        
-        return theta_list
+    def print_joint_angles(self):
+
+        for joint, angle in enumerate(self.joint_angles):
+            print("J",joint, ":", degrees(angle))
     
     # receives GetPlan message
     def pickup(self, msg):
@@ -290,29 +213,112 @@ def JointTrajectory(thetastart, thetaend, Tf, N, method):
     def cleanup(self):
         for joint in self.joints:
             joint.cleanup()
-            
+
+    @staticmethod
+    def CubicTimeScaling(Tf, t):
+        """Computes s(t) for a cubic time scaling
+
+        :param Tf: Total time of the motion in seconds from rest to rest
+        :param t: The current time t satisfying 0 < t < Tf
+        :return: The path parameter s(t) corresponding to a third-order
+             polynomial motion that begins and ends at zero velocity
+
+        Example Input:
+            Tf = 2
+            t = 0.6
+        Output:
+            0.216
+        """
+        return 3 * (1.0 * t / Tf) ** 2 - 2 * (1.0 * t / Tf) ** 3
+
+    @staticmethod
+    def QuinticTimeScaling(Tf, t):
+        """Computes s(t) for a quintic time scaling
+
+        :param Tf: Total time of the motion in seconds from rest to rest
+        :param t: The current time t satisfying 0 < t < Tf
+        :return: The path parameter s(t) corresponding to a fifth-order
+             polynomial motion that begins and ends at zero velocity and zero
+             acceleration
+
+        Example Input:
+            Tf = 2
+            t = 0.6
+        Output:
+            0.16308
+        """
+        return 10 * (1.0 * t / Tf) ** 3 - 15 * (1.0 * t / Tf) ** 4 \
+           + 6 * (1.0 * t / Tf) ** 5
+    
+    @staticmethod
+    def JointTrajectory(thetastart, thetaend, Tf, N, method):
+        """Computes a straight-line trajectory in joint space
+
+        :param thetastart: The initial joint variables
+        :param thetaend: The final joint variables
+        :param Tf: Total time of the motion in seconds from rest to rest
+        :param N: The number of points N > 1 (Start and stop) in the discrete
+              representation of the trajectory
+        :param method: The time-scaling method, where 3 indicates cubic (third-
+                   order polynomial) time scaling and 5 indicates quintic
+                   (fifth-order polynomial) time scaling
+        :return: A trajectory as an N x n matrix, where each row is an n-vector
+             of joint variables at an instant in time. The first row is
+             thetastart and the Nth row is thetaend . The elapsed time
+             between each row is Tf / (N - 1)
+
+        Example Input:
+            thetastart = np.array([1, 0, 0, 1, 1, 0.2, 0,1])
+            thetaend = np.array([1.2, 0.5, 0.6, 1.1, 2, 2, 0.9, 1])
+            Tf = 4
+            N = 6
+            method = 3
+        Output:
+            np.array([[     1,     0,      0,      1,     1,    0.2,      0, 1]
+                        [1.0208, 0.052, 0.0624, 1.0104, 1.104, 0.3872, 0.0936, 1]
+                        [1.0704, 0.176, 0.2112, 1.0352, 1.352, 0.8336, 0.3168, 1]
+                        [1.1296, 0.324, 0.3888, 1.0648, 1.648, 1.3664, 0.5832, 1]
+                        [1.1792, 0.448, 0.5376, 1.0896, 1.896, 1.8128, 0.8064, 1]
+                        [   1.2,   0.5,    0.6,    1.1,     2,      2,    0.9, 1]])
+        """
+        N = int(N)
+        timegap = Tf / (N - 1.0)
+        traj = np.zeros((len(thetastart), N))
+        for i in range(N):
+            if method == 3:
+                s = Arm.CubicTimeScaling(Tf, timegap * i)
+            else:
+                s = Arm.QuinticTimeScaling(Tf, timegap * i)
+            traj[:, i] = s * np.array(thetaend) + (1 - s) * np.array(thetastart)
+        traj = np.array(traj).T
+        return traj
 
 if __name__ == '__main__':
  
     try:
         print("setting up the arm")
-        j1 = Stepper(pulse_pin_j1, dir_pin_j1, enable_pin, homing_pin_j1, pulses_per_rev, gear_ratio_j1, max_speed_j1,max_positive_angle_j1,max_negative_angle_j1, home_count_j1,homing_direction_j1, stepper_id =1, debug=True) 
+        j1 = Stepper(pulse_pin_j1, dir_pin_j1, enable_pin, homing_pin_j1, pulses_per_rev, gear_ratio_j1, max_speed_j1,max_positive_angle_j1,max_negative_angle_j1, home_count_j1,homing_direction_j1, stepper_id =1, debug=False) 
         j2 = Stepper(pulse_pin_j2, dir_pin_j2, enable_pin, homing_pin_j2, pulses_per_rev, gear_ratio_j2, max_speed_j2,max_positive_angle_j2, max_negative_angle_j2,home_count_j2,homing_direction_j2 ,inverted=True, stepper_id=2, debug=False)
-        j3 = Stepper(pulse_pin_j3, dir_pin_j3, enable_pin, homing_pin_j3, pulses_per_rev, gear_ratio_j3, max_speed_j3,max_positive_angle_j3, max_negative_angle_j3,home_count_j3,homing_direction_j3,kp=0.10,kd=0.003, stepper_id = 3)
+        j3 = Stepper(pulse_pin_j3, dir_pin_j3, enable_pin, homing_pin_j3, pulses_per_rev, gear_ratio_j3, max_speed_j3,max_positive_angle_j3, max_negative_angle_j3,home_count_j3,homing_direction_j3,kp=0.10,kd=0.003, stepper_id = 3, debug = True)
        
         arm = Arm(j1, j2, j3)
-        #arm.home()
+        arm.home()
 
         #print(arm.fk([0, 0, 0]))
         # Target end-effector position (example)
-        target_position = np.array([200, 100, 150])
+        target_position = np.array([200, 70, 0])
         # Calculate inverse kinematics using L-BFGS-B
         optimized_thetas, result, elapsed_time = arm.ik(target_position)
+        [print(degrees(x)) for x in optimized_thetas]
+        traj = arm.trajectory_planning(optimized_thetas)
+        print(traj)
+        arm.follow_trajectory(traj)
+        print(arm.joint_angles)
 
-        print("Optimized joint angles (radians):", [round(x, 4) for x in optimized_thetas])
-        print("Optimization success:", result.success)
-        print("Message:", result.message)
-        print(f"Elapsed time: {elapsed_time:.4f} seconds")
+        #print("Optimized joint angles (radians):", [round(x, 4) for x in optimized_thetas])
+        #print("Optimization success:", result.success)
+        #print("Message:", result.message)
+        #print(f"Elapsed time: {elapsed_time:.4f} seconds")
         
         # get joint angles
         # joint_angles = arm.ik(desired_ee)

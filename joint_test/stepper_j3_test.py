@@ -259,7 +259,7 @@ class Stepper:
             return GPIO.input(self.homing_pin) == GPIO.HIGH
 
         POLL_INTERVAL = 0.01 # Polling interval in seconds (10ms)
-        DEBOUNCE_COUNT = 2 # Number of consecutive polls needed to confirm switch press
+        DEBOUNCE_COUNT = 3 # Number of consecutive polls needed to confirm switch press
         MAX_INTERVAL = 3
         try:
             num_intervals = 0
@@ -339,10 +339,17 @@ if __name__ == '__main__':
         j3 = Stepper(pulse_pin_j3, dir_pin_j3, enable_pin, homing_pin_j3, pulses_per_rev, gear_ratio_j3, max_speed_j3,max_positive_angle_j3, max_negative_angle_j3,home_count_j3,homing_direction_j3,kp=0.10,kd=0.003)
         count = 0
 
-        while count < 3:
-            j3.home()
-            time.sleep(2)
-            count += 1
+        #while count < 3:
+           # j3.home()
+           # time.sleep(2)
+           # count += 1
+
+        j3.home()
+        time.sleep(3)
+        j3.write(19)
+        
+        while True:
+            pass
 
         GPIO.cleanup()
     except KeyboardInterrupt:

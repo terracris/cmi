@@ -9,7 +9,7 @@ input_2 = 33
 input_3 = 40
 input_4 = 18
 
-test_pin = input_1
+test_pin = input_3
 # Set up GPIO pin 18 as an input
 GPIO.setup(test_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 

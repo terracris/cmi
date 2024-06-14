@@ -2,13 +2,11 @@ import time
 import ctypes
 import numpy as np
 from math import sqrt
-import Jetson.GPIO as GPIO
-from collections import deque
+import RPi.GPIO as GPIO
 from math import ceil
 """
 Default motor rotation direction is CCW. However, you can set the motor to be inverted
 """
-GPIO.setmode(GPIO.BOARD)
 
 class Stepper:
     CCW = 1
@@ -194,12 +192,14 @@ class Stepper:
         Stepper.usleep(2*self.min_dir_width)
 
 
-   # returns time in microseconds since epoch 1970
+   # returns time in milliseconds since epoch 1970
     @staticmethod 
     def get_time():
         return int(time.time() * Stepper.MILLISECONDS_IN_SECOND)
    
     def set_output_pins(self):
+        
+        GPIO.setmode(GPIO.BOARD)
         
         GPIO.setup(self.pulse_pin, GPIO.OUT)   # output pin 
         GPIO.setup(self.dir_pin, GPIO.OUT)     # output pin
@@ -217,56 +217,79 @@ class Stepper:
             GPIO.output(self.dir_pin, GPIO.LOW)    # HIGH is ccw --> default direction
         GPIO.output(self.pulse_pin, GPIO.LOW)  # no pulse
         time.sleep(self.min_enable_setup) # minimum enable time is 200 ms 
-    
-    
+
     def home(self):
-        
-        is_home = GPIO.input(self.homing_pin)  # reads from homing pin to determine if we are home yet
+
+        is_home = self.is_my_switch_pressed()  # reads from homing pin to determine if we are home yet
 
         self.direction = self.homing_direction # all motors home in the CCW direction
-        
+
         while not is_home:
             # if we are not home, we must rotate in our negative direction
             # until the limit switch has been hit
-            
-            is_home = GPIO.input(self.homing_pin)
+
+            is_home = self.is_my_switch_pressed()
             if is_home:
                 break
 
             if self.debug:
-                pass
-                #print("homing direction is: ", self.direction)
+                print("homing direction is: ", self.direction)
             self.step()
             time.sleep(0.01) # sleep 10 ms between pulses --> gives pretty good speed
 
-        
+
         if self.debug:
             print("I homed")
         self.stop()
 
         # once we have hit the limit switch, we must go to our home configuration step count
-        # unfortunately, I believe this will have to be calculated experimentally. 
+        # unfortunately, I believe this will have to be calculated experimentally.
         # to minimize the error, we should increase the pulse number
         self.has_homed = True
         time.sleep(0.05) # wait to slow down completely
         home_count = abs(self.home_count) # count to home position
         self.direction = Stepper.CW if self.homing_direction == Stepper.CCW else Stepper.CCW  # we need to move in the opposite to our homing direction
-        
+
         cur_pos = 0
         while cur_pos < home_count:
             self.step()
             time.sleep(0.01)
             if self.debug:
-                pass
-                #print("current direction is: ", self.direction)
+                print("current direction is: ", self.direction)
             cur_pos += 1
-        
-        
+
+
         #self.move_absolute_pid(home_count) # move there
 
         # after all homing is complete, we need to reset our position
         self.reset_position()
 
+    def is_my_switch_pressed(self):
+
+        def is_switch_pressed():
+            return GPIO.input(self.homing_pin) == GPIO.HIGH
+
+        POLL_INTERVAL = 0.01 # Polling interval in seconds (10ms)
+        DEBOUNCE_COUNT = 2 # Number of consecutive polls needed to confirm switch press
+        MAX_INTERVAL = 3
+        try:
+            num_intervals = 0
+            consecutive_presses = 0
+            while num_intervals < MAX_INTERVAL:
+            # Read the state of the GPIO pin
+                if is_switch_pressed():
+                    consecutive_presses += 1
+                    if consecutive_presses >= DEBOUNCE_COUNT:
+                        return True
+                        print("Limit switch pressed")
+                else:
+                    consecutive_presses = 0
+
+                time.sleep(POLL_INTERVAL) # wait before next poll
+                num_intervals += 1
+        except Exception as e:
+            print(e)
+    
     def reset_position(self):
         self.current_pos = 0
         self.target_pos = 0

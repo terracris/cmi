@@ -2,9 +2,9 @@ import numpy as np
 from math import cos, sin, pi
 
 # angles must be in radians
-theta_1 = pi/3
-theta_2 = pi/3
-theta_3 = pi/4
+theta_1 = 0.4775 
+theta_2 = 0.2507
+theta_3 = 0.5273
 
 # link lengths are in mm (I wonder if this is okay)
 # TODO measure link lenghts (cannot really use solidworks for this)

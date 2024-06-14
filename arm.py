@@ -2,10 +2,10 @@
 
 import threading
 import numpy as np
-from math import radians, degrees, sqrt, atan2, pi, asin, cos
-# import modern_robotics as mr
+from math import radians, degrees, sqrt, pi, asin, cos, sin
 from stepper import Stepper
-from time import sleep
+from scipy.optimize import minimize
+import time
 from config import *
 
 class Arm:
@@ -19,6 +19,17 @@ class Arm:
                                                [-1, 0,      0,      0.032445],
                                                [ 0,-0.9135,-0.4067, 0.416466],
                                                [ 0, 0,      0,      1]])
+
+        # Parameters
+        self.L1 = 126.40
+        self.L2 = 46
+        self.L3 = 150
+        self.L4 = 15
+        self.L5 = 194.10
+        self.y_offset = -3.5
+
+        self.link_lengths = [self.L1, self.L2, self.L3, self.L4, self.L5]
+        self.bounds = [(-pi/2, pi/3), (-pi/18, 2*pi/3), (-4*pi/9, 4*pi/9)]
 
         # EE orientation error tol
         self.eomg = 0.01 
@@ -51,11 +62,60 @@ class Arm:
         joint.home()
 
     # theta_list is list of joint angles 
-    def fk(self, theta_list):
-        pass
+    def fk(self, thetas):
+        theta_1, theta_2, theta_3 = thetas
+        L1, L2, L3, L4, L5 = self.link_lengths
+        y_offset = self.y_offset
 
-    def ik(self, desired_ee):
-        pass 
+        A_1 = np.array([[cos(theta_1), 0, -sin(theta_1), (L2*cos(theta_1))],
+                    [sin(theta_1), 0, cos(theta_1),  (L2*sin(theta_1))],
+                    [0,           -1,  0,                           L1],
+                    [0,            0 , 0,                            1]
+                    ])
+
+        A_2 = np.array([[cos(theta_2 - (pi/2)), -sin(theta_2 - (pi/2)),  0, ((L3+L4)*cos(theta_2 - (pi/2)))],
+                    [sin(theta_2 - (pi/2)), cos(theta_2 - (pi/2)),   0,  ((L3+L4)*sin(theta_2 - (pi/2)))],
+                    [0,                     0,                       1,                            0],
+                    [0,                     0 ,                      0,                            1]
+                    ])
+
+        A_3 = np.array([[cos(theta_3 + (pi/2)), -sin(theta_3 + (pi/2)),  0, ((L5)*cos(theta_3 + (pi/2)))],
+                    [sin(theta_3 + (pi/2)), cos(theta_3 + (pi/2)),   0,  ((L5)*sin(theta_3 + (pi/2)))],
+                    [0,                     0,                       1,                            0],
+                    [0,                     0 ,                      0,                            1]
+                    ])
+
+        base_ee_trans = np.eye(4)
+        transformations = [A_1, A_2, A_3]
+    
+        for intermediate_trans in transformations:
+            base_ee_trans = np.dot(base_ee_trans, intermediate_trans)
+    
+        base_ee_trans[1][3] += y_offset
+
+        return base_ee_trans
+ 
+
+    # Calculate inverse kinematics using L-BFGS-B
+    def ik(self, desired_ee, initial_guess=np.array([pi/4, pi/4, pi/4]), max_iter=1000, tol=1e-3):
+        # Objective function
+        def objective(thetas, target_position):
+            fk_result = self.fk(thetas)
+            ee_position = fk_result[:3, 3]  # Extract the end-effector position
+            error = np.linalg.norm(ee_position - target_position)  # Compute the Euclidean distance
+            return error
+
+        options = {
+        'maxiter': max_iter,
+        'disp': False,  # Display convergence messages
+        }
+        
+        start = time.time()
+        result = minimize(objective, initial_guess, args=(target_position), method='L-BFGS-B', bounds=self.bounds, options=options, tol=tol)
+        end = time.time()
+
+        elapsed_time = end - start
+        return result.x, result, elapsed_time
 
     def trajectory_planning(self, ik):
         
@@ -149,39 +209,7 @@ class Arm:
         x_offset = 0.07 # 7cm
         offset_x = trans_x - x_offset
 
-        l1, l2, l3 = 0.53477, 0.37063, 0.559
-        alpha = asin(x_offset/l1)
-        s = trans_z - (l1*cos(alpha))
-        r = sqrt((offset_x**2) + (trans_y**2))
-        c3 = (r**2 + s**2 - l2**2 - l3**2) / (2*(l1*cos(alpha))*l2)
-        s3 = -sqrt(1-(c3**2))
-        gamma = atan2(s, r)
-        phi = atan2((l3*s3), (l2+ (l3*c3)))
-
-        #j1 = atan2(trans_y, trans_x)
-        #j2 = (gamma - phi) + (pi/2)
-        #j3 = atan2(s3, c3) + (pi/2)
-
-        j1, j2, j3 = ik_geo(trans_x, trans_y, trans_z)
-        if j1 < 0:
-            j1 = j1*1.3
-        j2 = j2*1
-        j3 = j3*1.10
-        joint_angles = [j1, j2, j3]
-        
-        print()
-        [print("joint ", (joint+1),": ", degrees(angle), "degrees") for joint, angle in enumerate(joint_angles) ]
-
-        traj = self.trajectory_planning(joint_angles)
-
-        print("trajectory angles: ", traj)
-        
-        self.home()
-        self.follow_trajectory(traj)
-
-        poses = []
-
-            
+                    
     def run(self):
         pass
     
@@ -199,8 +227,18 @@ if __name__ == '__main__':
         j3 = Stepper(pulse_pin_j3, dir_pin_j3, enable_pin, homing_pin_j3, pulses_per_rev, gear_ratio_j3, max_speed_j3,max_positive_angle_j3, max_negative_angle_j3,home_count_j3,homing_direction_j3,kp=0.10,kd=0.003, stepper_id = 3)
        
         arm = Arm(j1, j2, j3)
-        arm.home()
+        #arm.home()
 
+        #print(arm.fk([0, 0, 0]))
+        # Target end-effector position (example)
+        target_position = np.array([200, 100, 150])
+        # Calculate inverse kinematics using L-BFGS-B
+        optimized_thetas, result, elapsed_time = arm.ik(target_position)
+
+        print("Optimized joint angles (radians):", [round(x, 4) for x in optimized_thetas])
+        print("Optimization success:", result.success)
+        print("Message:", result.message)
+        print(f"Elapsed time: {elapsed_time:.4f} seconds")
         
         # get joint angles
         # joint_angles = arm.ik(desired_ee)

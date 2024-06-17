@@ -306,7 +306,7 @@ if __name__ == '__main__':
 
         #print(arm.fk([0, 0, 0]))
         # Target end-effector position (example)
-        target_position = np.array([200, 70, 0])
+        target_position = np.array([200, 70, 1])
         # Calculate inverse kinematics using L-BFGS-B
         optimized_thetas, result, elapsed_time = arm.ik(target_position)
         [print(degrees(x)) for x in optimized_thetas]

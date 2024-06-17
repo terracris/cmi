@@ -200,14 +200,13 @@ class Stepper:
             # if we are not home, we must rotate in our negative direction
             # until the limit switch has been hit
 
-            is_home = self.is_my_switch_pressed()
+            is_home = self.is_my_switch_pressed() # this adds a 30 ms delay
             if is_home:
                 break
 
             if self.debug:
                 print("homing direction is: ", self.direction)
             self.step()
-            self.sleep(0.01) # 10 ms sleep
 
         if self.debug:
             print("I homed")
@@ -225,7 +224,7 @@ class Stepper:
         cur_pos = 0
         while cur_pos < home_count:
             self.step()
-            #time.sleep(0.01)
+            time.sleep(0.01)
             if self.debug:
                 print("current direction is: ", self.direction, "pos: ", cur_pos)
             cur_pos += 1

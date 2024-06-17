@@ -297,12 +297,16 @@ class Stepper:
         Sleep for the given number of microseconds.
         """ 
         Stepper.libc.usleep(int(microseconds))
-
 if __name__ == '__main__':
     try:
-        j1 = Stepper(pulse_pin_j1, dir_pin_j1, enable_pin, homing_pin_j1, pulses_per_rev, gear_ratio_j1, max_speed_j1,max_positive_angle_j1,max_negative_angle_j1, home_count_j1,homing_direction_j1, stepper_id =1, debug=True)
+        j3 = Stepper(pulse_pin_j3, dir_pin_j3, enable_pin, homing_pin_j3, pulses_per_rev, gear_ratio_j3, max_speed_j3,max_positive_angle_j3, max_negative_angle_j3,home_count_j3,homing_direction_j3,kp=0.10,kd=0.003, stepper_id = 3, debug = True)
 
-        j1.home()
+        j3.home()
+
+        time.sleep(5)
+        j3.write(19)
+        while True:
+            pass
 
     except KeyboardInterrupt:
-        j1.cleanup()
+        j3.cleanup()

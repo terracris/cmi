@@ -4,6 +4,7 @@ import numpy as np
 from math import sqrt
 import RPi.GPIO as GPIO
 from math import ceil
+from config import *
 """
 Default motor rotation direction is CCW. However, you can set the motor to be inverted
 """
@@ -200,14 +201,13 @@ class Stepper:
             # if we are not home, we must rotate in our negative direction
             # until the limit switch has been hit
 
-            is_home = self.is_my_switch_pressed()
+            is_home = self.is_my_switch_pressed() # this adds a 30 ms delay
             if is_home:
                 break
 
             if self.debug:
                 print("homing direction is: ", self.direction)
             self.step()
-            self.sleep(0.01) # 10 ms sleep
 
         if self.debug:
             print("I homed")
@@ -225,7 +225,7 @@ class Stepper:
         cur_pos = 0
         while cur_pos < home_count:
             self.step()
-            #time.sleep(0.01)
+            time.sleep(0.01)
             if self.debug:
                 print("current direction is: ", self.direction, "pos: ", cur_pos)
             cur_pos += 1
@@ -298,3 +298,11 @@ class Stepper:
         """ 
         Stepper.libc.usleep(int(microseconds))
 
+if __name__ == '__main__':
+    try:
+        j1 = Stepper(pulse_pin_j1, dir_pin_j1, enable_pin, homing_pin_j1, pulses_per_rev, gear_ratio_j1, max_speed_j1,max_positive_angle_j1,max_negative_angle_j1, home_count_j1,homing_direction_j1, stepper_id =1, debug=True)
+
+        j1.home()
+
+    except KeyboardInterrupt:
+        j1.cleanup()

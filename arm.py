@@ -160,7 +160,7 @@ class Arm:
         # TODO make write in stepper library return the actual angle of the joint
         # because of our step angle resolution there is error --> this will help account for the error in pose
         angle_deg = degrees(joint_angle)
-        #print("angle for joint: ", joint.id, " ", angle_deg)
+        print("angle for joint: ", joint.id, " ", angle_deg)
         
         updated_angle = joint.write(angle_deg)
         
@@ -313,7 +313,7 @@ if __name__ == '__main__':
         traj = arm.trajectory_planning(optimized_thetas)
         print(traj)
         arm.follow_trajectory(traj)
-        print(arm.joint_angles)
+       #print(arm.joint_angles)
 
         #print("Optimized joint angles (radians):", [round(x, 4) for x in optimized_thetas])
         #print("Optimization success:", result.success)

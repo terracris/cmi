@@ -4,6 +4,7 @@ import numpy as np
 from math import sqrt
 import RPi.GPIO as GPIO
 from math import ceil
+from config import *
 """
 Default motor rotation direction is CCW. However, you can set the motor to be inverted
 """
@@ -202,20 +203,19 @@ class Stepper:
 
             if self.debug:
                 print("homing direction is: ", self.direction)
-            
             self.step()
-            
+
             is_home = self.is_my_switch_pressed() # this adds a 30 ms delay
 
         if self.debug:
             print("I homed")
-        #self.stop()
+        self.stop()
 
         # once we have hit the limit switch, we must go to our home configuration step count
         # unfortunately, I believe this will have to be calculated experimentally.
         # to minimize the error, we should increase the pulse number
         self.has_homed = True
-        time.sleep(1) # wait to slow down completely
+        time.sleep(0.5) # wait to slow down completely
         home_count = abs(self.home_count) # count to home position
         reversed_direction = Stepper.CW if self.homing_direction == Stepper.CCW else Stepper.CCW  # we need to move in the opposite to our homing direction
 
@@ -237,7 +237,7 @@ class Stepper:
         def is_switch_pressed():
             return GPIO.input(self.homing_pin) == GPIO.HIGH
 
-        POLL_INTERVAL = 0.005 # Polling interval in seconds (5ms)
+        POLL_INTERVAL = 0.005 # Polling interval in seconds (10ms)
         DEBOUNCE_COUNT = 2 # Number of consecutive polls needed to confirm switch press
         MAX_INTERVAL = 3
         try:
@@ -295,4 +295,15 @@ class Stepper:
         Sleep for the given number of microseconds.
         """ 
         Stepper.libc.usleep(int(microseconds))
+if __name__ == '__main__':
+    try:
+        j2 = Stepper(pulse_pin_j2, dir_pin_j2, enable_pin, homing_pin_j2, pulses_per_rev_j2, gear_ratio_j2, max_speed_j2,max_positive_angle_j2, max_negative_angle_j2,home_count_j2,homing_direction_j2 ,inverted=True, stepper_id=2, debug=True)
+        j2.home()
 
+        #time.sleep(2)
+        #j2.write(45)
+        while True:
+            pass
+
+    except KeyboardInterrupt:
+        j2.cleanup()

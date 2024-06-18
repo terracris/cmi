@@ -26,8 +26,10 @@ class Arm:
         self.L3 = 150
         self.L4 = 15
         self.L5 = 194.10
-        self.y_offset = -3.5
+        self.y_offset = -2.70
+        # TODO add x offsets to acount for errors in manufacturing process
 
+        self.x_offset = 3
         self.link_lengths = [self.L1, self.L2, self.L3, self.L4, self.L5]
         self.bounds = [(-pi/2, pi/3), (-pi/18, 2*pi/3), (-4*pi/9, 4*pi/9)]
 
@@ -63,6 +65,7 @@ class Arm:
         theta_1, theta_2, theta_3 = thetas
         L1, L2, L3, L4, L5 = self.link_lengths
         y_offset = self.y_offset
+        x_offset = self.x_offset
 
         A_1 = np.array([[cos(theta_1), 0, -sin(theta_1), (L2*cos(theta_1))],
                     [sin(theta_1), 0, cos(theta_1),  (L2*sin(theta_1))],
@@ -89,7 +92,7 @@ class Arm:
             base_ee_trans = np.dot(base_ee_trans, intermediate_trans)
     
         base_ee_trans[1][3] += y_offset
-
+        base_ee_trans[0][3] += x_offset
         return base_ee_trans
  
 
@@ -135,6 +138,7 @@ class Arm:
         for point in range(1, num_trajecory_points):
             joint_pose = trajecory[point]
             self.write_joints(joint_pose)
+            time.sleep(2)
 
     def write_joints(self, joint_pose):
         zipped = zip(self.joints, joint_pose)
@@ -297,19 +301,20 @@ if __name__ == '__main__':
  
     try:
         print("setting up the arm")
-        j1 = Stepper(pulse_pin_j1, dir_pin_j1, enable_pin, homing_pin_j1, pulses_per_rev, gear_ratio_j1, max_speed_j1,max_positive_angle_j1,max_negative_angle_j1, home_count_j1,homing_direction_j1, stepper_id =1, debug=False) 
-        j2 = Stepper(pulse_pin_j2, dir_pin_j2, enable_pin, homing_pin_j2, pulses_per_rev, gear_ratio_j2, max_speed_j2,max_positive_angle_j2, max_negative_angle_j2,home_count_j2,homing_direction_j2 ,inverted=True, stepper_id=2, debug=False)
-        j3 = Stepper(pulse_pin_j3, dir_pin_j3, enable_pin, homing_pin_j3, pulses_per_rev, gear_ratio_j3, max_speed_j3,max_positive_angle_j3, max_negative_angle_j3,home_count_j3,homing_direction_j3,kp=0.10,kd=0.003, stepper_id = 3, debug = True)
+        j1 = Stepper(pulse_pin_j1, dir_pin_j1, enable_pin, homing_pin_j1, pulses_per_rev_j1, gear_ratio_j1, max_speed_j1,max_positive_angle_j1,max_negative_angle_j1, home_count_j1,homing_direction_j1, stepper_id =1, debug=False) 
+        j2 = Stepper(pulse_pin_j2, dir_pin_j2, enable_pin, homing_pin_j2, pulses_per_rev_j2, gear_ratio_j2, max_speed_j2,max_positive_angle_j2, max_negative_angle_j2,home_count_j2,homing_direction_j2 ,inverted=True, stepper_id=2, debug=True)
+        j3 = Stepper(pulse_pin_j3, dir_pin_j3, enable_pin, homing_pin_j3, pulses_per_rev_j3, gear_ratio_j3, max_speed_j3,max_positive_angle_j3, max_negative_angle_j3,home_count_j3,homing_direction_j3, stepper_id = 3, debug = False)
        
         arm = Arm(j1, j2, j3)
         arm.home()
 
         #print(arm.fk([0, 0, 0]))
         # Target end-effector position (example)
-        target_position = np.array([200, 70, 1])
+        target_position = np.array([200, 70, 0])
         # Calculate inverse kinematics using L-BFGS-B
         optimized_thetas, result, elapsed_time = arm.ik(target_position)
         [print(degrees(x)) for x in optimized_thetas]
+        joe = input("shall we continue?")
         traj = arm.trajectory_planning(optimized_thetas)
         print(traj)
         arm.follow_trajectory(traj)

@@ -26,10 +26,10 @@ class Arm:
         self.L3 = 150
         self.L4 = 15
         self.L5 = 194.10
-        self.y_offset = -2.70
-        # TODO add x offsets to acount for errors in manufacturing process
-
+        self.y_offset = 0
         self.x_offset = 3
+        self.z_offset = 15
+
         self.link_lengths = [self.L1, self.L2, self.L3, self.L4, self.L5]
         self.bounds = [(-pi/2, pi/3), (-pi/18, 2*pi/3), (-4*pi/9, 4*pi/9)]
 
@@ -66,6 +66,7 @@ class Arm:
         L1, L2, L3, L4, L5 = self.link_lengths
         y_offset = self.y_offset
         x_offset = self.x_offset
+        z_offset = self.z_offset
 
         A_1 = np.array([[cos(theta_1), 0, -sin(theta_1), (L2*cos(theta_1))],
                     [sin(theta_1), 0, cos(theta_1),  (L2*sin(theta_1))],
@@ -93,6 +94,8 @@ class Arm:
     
         base_ee_trans[1][3] += y_offset
         base_ee_trans[0][3] += x_offset
+        base_ee_trans[2][3] += z_offset
+
         return base_ee_trans
  
 
@@ -310,7 +313,7 @@ if __name__ == '__main__':
 
         #print(arm.fk([0, 0, 0]))
         # Target end-effector position (example)
-        target_position = np.array([200, 70, 0])
+        target_position = np.array([180, 0, 0])
         # Calculate inverse kinematics using L-BFGS-B
         optimized_thetas, result, elapsed_time = arm.ik(target_position)
         [print(degrees(x)) for x in optimized_thetas]

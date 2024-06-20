@@ -1,7 +1,7 @@
 from stepper import Stepper
 
-pulses_per_rev = 1600
 enable_pin = 37
+j2_friction_loss = 40
 
 """
 at 200 steps per rev
@@ -28,7 +28,7 @@ pulse_pin_j2 = 29
 dir_pin_j2 = 31
 homing_pin_j2 = 33
 gear_ratio_j2 = 2.4 * 5.18
-home_count_j2 = -405 
+home_count_j2 = -460 - j2_friction_loss 
 max_speed_j2 = 80   
 max_positive_angle_j2 = 120
 max_negative_angle_j2 = -10
@@ -40,7 +40,7 @@ pulse_pin_j3 = 36
 dir_pin_j3 = 38
 homing_pin_j3 = 40
 gear_ratio_j3 = 2.4 
-home_count_j3 = -590
+home_count_j3 = -620
 max_speed_j3 = 75
 max_positive_angle_j3 = 80  
 max_negative_angle_j3 = -80  

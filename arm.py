@@ -26,9 +26,9 @@ class Arm:
         self.L3 = 150
         self.L4 = 15
         self.L5 = 194.10
-        self.y_offset = 0
-        self.x_offset = 3
-        self.z_offset = 15
+        self.y_offset = -5 # originally -2.7
+        self.x_offset = 6
+        self.z_offset = 14
 
         self.link_lengths = [self.L1, self.L2, self.L3, self.L4, self.L5]
         self.bounds = [(-pi/2, pi/3), (-pi/18, 2*pi/3), (-4*pi/9, 4*pi/9)]
@@ -313,7 +313,7 @@ if __name__ == '__main__':
 
         #print(arm.fk([0, 0, 0]))
         # Target end-effector position (example)
-        target_position = np.array([180, 0, 0])
+        target_position = np.array([185, 0, 0])
         # Calculate inverse kinematics using L-BFGS-B
         optimized_thetas, result, elapsed_time = arm.ik(target_position)
         [print(degrees(x)) for x in optimized_thetas]
